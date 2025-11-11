@@ -59,14 +59,17 @@ export const Zuck: ZuckFunction = function (timeline, options) {
   ) {
     const itemElement = elements?.[1];
     const itemPointer = elements?.[0];
-
     if (!itemElement || !itemPointer) {
       return false;
     }
 
     const cur = internalData.currentVideoElement;
+    // if (cur) {
+    //   cur.pause();
+    // }
     if (cur) {
-      cur.pause();
+      try { cur.pause(); } catch {}
+      zuck.internalData.currentVideoElement = undefined;
     }
 
     if (itemElement.getAttribute('data-type') === 'video') {
@@ -96,6 +99,21 @@ export const Zuck: ZuckFunction = function (timeline, options) {
       internalData.currentVideoElement = video;
 
       video.play();
+
+      // try {
+      //   unmuteVideoItem(video, storyViewer);
+      // } catch (e) {
+      //   console.warn('Could not unmute video', unmute);
+      // }
+      if (storyViewer) {
+        if (video.muted) {
+          storyViewer.classList.add('muted');
+        } else {
+          storyViewer.classList.remove('muted');
+          const ov = storyViewer.querySelector<HTMLElement>('.tip');
+          if (ov) { ov.classList.add('hidden'); ov.style.display='none'; ov.style.pointerEvents='none'; }
+        }
+      }
 
       try {
         unmuteVideoItem(video, storyViewer);
@@ -127,15 +145,18 @@ export const Zuck: ZuckFunction = function (timeline, options) {
     video.muted = false;
     video.volume = 1.0;
     video.removeAttribute('muted');
-    video.play();
 
+    const tryPlay = () => video.play().catch(() => {});
+    tryPlay();
     if (video.paused) {
       video.muted = true;
-      video.play();
+      tryPlay();
     }
 
     if (storyViewer) {
-      storyViewer?.classList.remove('paused');
+      storyViewer.classList.remove('paused', 'muted');
+      const ov = storyViewer.querySelector<HTMLElement>('.tip');
+      if (ov) { ov.classList.add('hidden'); ov.style.display='none'; ov.style.pointerEvents='none'; }
     }
   };
 
@@ -305,6 +326,22 @@ export const Zuck: ZuckFunction = function (timeline, options) {
       story?.setAttribute('data-last-updated', data['lastUpdated']?.toString());
     } else {
       story?.setAttribute('data-last-updated', data['time']?.toString());
+    }
+
+    const seenFromItems =
+      Array.isArray(items) && items.length > 0 && items.every(i => i.seen === true);
+
+    const localSeen = internalData.seenItems[storyId] === true;
+
+    // Resolvemos el seen final de la story con prioridad: data.seen (si ya venía) OR todos-los-items-seen OR localStorage
+    const resolvedSeen = !!(data.seen || seenFromItems || localSeen);
+    data.seen = resolvedSeen;
+
+    // Sincroniza memoria y DOM desde el principio
+    internalData.seenItems[storyId] = resolvedSeen;
+    saveLocalData('seenItems', internalData.seenItems);
+    if (resolvedSeen) {
+      story?.classList.add('seen');
     }
 
     parseStory(story);
@@ -516,19 +553,29 @@ export const Zuck: ZuckFunction = function (timeline, options) {
       );
     }
 
-    if (!option('reactive')) {
-      const seenItems = getLocalData<{
-        [keyName: string]: number;
-      }>('seenItems');
+    // if (!option('reactive')) {
+    //   const seenItems = getLocalData<{
+    //     [keyName: string]: number;
+    //   }>('seenItems');
 
+    //   if (seenItems) {
+    //     Object.entries(seenItems).forEach(([, key]) => {
+    //       if (key && data[key]) {
+    //         data[key].seen = seenItems[key] ? true : false;
+    //       }
+    //     });
+    //   }
+    // }
+    if (!option('reactive')) {
+      const seenItems = getLocalData<{ [storyId: string]: boolean }>('seenItems');
       if (seenItems) {
-        Object.entries(seenItems).forEach(([, key]) => {
-          if (key && data[key]) {
-            data[key].seen = seenItems[key] ? true : false;
-          }
+        Object.keys(seenItems).forEach((storyId) => {
+          const idx = findStoryIndex(storyId);
+          if (idx !== -1) data[idx].seen = !!seenItems[storyId];
         });
       }
     }
+
 
     option('stories').forEach((item: TimelineItem) => {
       add(item, true);

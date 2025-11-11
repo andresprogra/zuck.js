@@ -263,9 +263,11 @@ export const modal = (zuck: ZuckObject) => {
               duration.style.cssText
             );
 
-            onAnimationEnd(duration, () => {
-              zuck.nextItem();
-            });
+            // onAnimationEnd(duration, () => {
+            //   zuck.nextItem();
+            // });
+            const newProgress = items[0].querySelector<HTMLElement>('.progress');
+            if (newProgress) onAnimationEnd(newProgress, () => zuck.nextItem());
           }
         }
 
@@ -324,10 +326,16 @@ export const modal = (zuck: ZuckObject) => {
 
     const video = slides.querySelector('video');
     const addMuted = function (video: HTMLVideoElement) {
+      // if (video.muted) {
+      //   storyViewer?.classList.add('muted');
+      // } else {
+      //   storyViewer?.classList.remove('muted');
+      // }
       if (video.muted) {
         storyViewer?.classList.add('muted');
       } else {
         storyViewer?.classList.remove('muted');
+        storyViewer?.querySelector('.unmute-overlay')?.classList.add('hidden'); // y en CSS: .hidden{display:none;pointer-events:none}
       }
     };
 
@@ -369,11 +377,62 @@ export const modal = (zuck: ZuckObject) => {
 
     const storyViewer = storyViewerWrap.firstElementChild as HTMLElement;
 
+    const wireUnmuteOverlay = () => {
+      let overlay = storyViewer.querySelector<HTMLElement>('.tip'); // <- stock zuck.js
+
+      if (!overlay) {
+        return; // en stock debería existir
+      }
+
+      // asegurar stacking y orden
+      storyViewer.style.position ||= 'relative';
+      (storyViewer.style as any).isolation = 'isolate';
+      if (storyViewer.lastElementChild !== overlay) storyViewer.appendChild(overlay);
+
+      Object.assign(overlay.style, {
+        position: 'absolute',
+        inset: '0',
+        zIndex: '2147483647',
+        pointerEvents: 'auto',
+        background: 'transparent',
+        border: '0',
+        cursor: 'pointer'
+      });
+
+      // limpiar handlers previos si reabres
+      const fresh = overlay.cloneNode(true) as HTMLElement;
+      overlay.replaceWith(fresh);
+      overlay = fresh;
+
+      const doUnmute = (e: Event) => {
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        (e as any).stopImmediatePropagation?.();
+
+        const video = storyViewer.querySelector<HTMLVideoElement>('video');
+        if (video) zuck.unmuteVideoItem(video, storyViewer);
+
+        overlay.classList.add('hidden');
+        overlay.style.display = 'none';
+        overlay.style.pointerEvents = 'none';
+        storyViewer.classList.remove('muted');
+      };
+
+      overlay.addEventListener('pointerdown', doUnmute, { capture: true, passive: false });
+      overlay.addEventListener('click',       doUnmute, { capture: true, passive: false });
+      overlay.addEventListener('touchend',    doUnmute, { capture: true, passive: false });
+    };
+
+
+
     const storyViewerPointerWrap = storyViewer.querySelector<HTMLElement>(
       '.slides-pointers .wrap'
     );
 
-    storyViewer.className = `story-viewer muted ${className} ${
+    // storyViewer.className = `story-viewer muted ${className} ${
+    //   !forcePlay ? 'stopped' : ''
+    // } ${zuck.option('backButton') ? 'with-back-button' : ''}`;
+    storyViewer.className = `story-viewer ${className} ${
       !forcePlay ? 'stopped' : ''
     } ${zuck.option('backButton') ? 'with-back-button' : ''}`;
 
@@ -395,6 +454,7 @@ export const modal = (zuck: ZuckObject) => {
       });
 
     storyViewer.appendChild(slides);
+    wireUnmuteOverlay();
 
     if (className === 'viewing') {
       zuck.playVideoItem(
@@ -448,6 +508,11 @@ export const modal = (zuck: ZuckObject) => {
     let nextTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
     const touchStart = function (event: TouchEvent | MouseEvent) {
+      const targetEl = event.target as HTMLElement;
+
+      if (targetEl && targetEl.closest('.tip')) {
+        return;
+      }
       const storyViewer = document.querySelector<HTMLElement>(
         '#zuck-modal .viewing'
       );
@@ -822,6 +887,11 @@ export const modal = (zuck: ZuckObject) => {
   };
 
   const close = () => {
+    const cur = zuck.internalData.currentVideoElement;
+    if (cur) {
+      try { cur.pause(); } catch {}
+      zuck.internalData.currentVideoElement = undefined;
+    }
     const modalContainer =
       document.querySelector<ModalContainer>('#zuck-modal');
     const modalContent = document.querySelector<HTMLElement>(
