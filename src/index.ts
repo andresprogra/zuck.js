@@ -106,13 +106,14 @@ export const Zuck: ZuckFunction = function (timeline, options) {
       //   console.warn('Could not unmute video', unmute);
       // }
       if (storyViewer) {
-        if (video.muted) {
-          storyViewer.classList.add('muted');
-        } else {
-          storyViewer.classList.remove('muted');
-          const ov = storyViewer.querySelector<HTMLElement>('.tip');
-          if (ov) { ov.classList.add('hidden'); ov.style.display='none'; ov.style.pointerEvents='none'; }
-        }
+        storyViewer.classList.add('muted');
+        // if (video.muted) {
+        //   storyViewer.classList.add('muted');
+        // } else {
+        //   storyViewer.classList.remove('muted');
+        //   const ov = storyViewer.querySelector<HTMLElement>('.tip');
+        //   if (ov) { ov.classList.add('hidden'); ov.style.display='none'; ov.style.pointerEvents='none'; }
+        // }
       }
 
       try {
@@ -173,8 +174,8 @@ export const Zuck: ZuckFunction = function (timeline, options) {
 
     if (storyViewer) {
       storyViewer.classList.remove('paused', 'muted');
-      const ov = storyViewer.querySelector<HTMLElement>('.tip');
-      if (ov) { ov.classList.add('hidden'); ov.style.display='none'; ov.style.pointerEvents='none'; }
+      // const ov = storyViewer.querySelector<HTMLElement>('.tip');
+      // if (ov) { ov.classList.add('hidden'); ov.style.display='none'; ov.style.pointerEvents='none'; }
     }
   };
 

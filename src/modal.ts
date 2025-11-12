@@ -397,7 +397,6 @@ export const modal = (zuck: ZuckObject) => {
       const onFirstInteract = (e: Event) => {
         const t = e.target as HTMLElement;
 
-        // No interceptar si es un click real sobre el caption/link o botones de UI
         if (t.closest('.tip') || t.closest('.close') || t.closest('.back') || t.closest('.slides-pointers')) {
           return;
         }
@@ -405,13 +404,11 @@ export const modal = (zuck: ZuckObject) => {
         const video = storyViewer.querySelector<HTMLVideoElement>('video');
         if (!video) return;
 
-        // Si está muteado o pausado por política de autoplay, intenta reproducir y desmutear
         if (video.muted || video.paused) {
           try { zuck.unmuteVideoItem(video, storyViewer); } catch {}
         }
       };
 
-      // Registramos gestos “amplios” para desbloquear audio sin mover DOM
       storyViewer.addEventListener('pointerdown', onFirstInteract, { passive: false });
       storyViewer.addEventListener('click',       onFirstInteract, { passive: false });
       storyViewer.addEventListener('touchend',    onFirstInteract, { passive: false });
