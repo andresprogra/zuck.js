@@ -138,6 +138,24 @@ export const Zuck: ZuckFunction = function (timeline, options) {
     }
   };
 
+  const pauseAllVideos = () => {
+    document
+      .querySelectorAll<HTMLVideoElement>('#zuck-modal video')
+      .forEach(v => { try { v.pause(); } catch { } });
+    
+    pauseVideoItem();
+  };
+
+  const ensureOnlyActiveVideoPlaying = (): HTMLVideoElement | null => {
+    const active = document.querySelector<HTMLVideoElement>(
+      '#zuck-modal .story-viewer.viewing .item.active video'
+    );
+    document.querySelectorAll<HTMLVideoElement>('#zuck-modal video').forEach(v => {
+      if (v !== active) { try { v.pause(); } catch {} }
+    });
+    return active || null;
+  };
+
   const unmuteVideoItem = function (
     video: HTMLVideoElement,
     storyViewer?: Maybe<HTMLElement>
@@ -484,6 +502,10 @@ export const Zuck: ZuckFunction = function (timeline, options) {
         if (nextVideo) {
           nextVideo.currentTime = 0;
         }
+
+        pauseAllVideos();
+
+
         playVideoItem(storyViewer, nextItems, event);
       };
 

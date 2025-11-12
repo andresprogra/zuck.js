@@ -71,6 +71,16 @@ export const modal = (zuck: ZuckObject) => {
     document.body.appendChild(modalZuckContainer);
   }
 
+  const pauseAllVideos = (except?: HTMLVideoElement) => {
+    document
+      .querySelectorAll<HTMLVideoElement>('#zuck-modal video')
+      .forEach(v => {
+        if (v !== except) {
+          try { v.pause(); } catch { }
+        }
+      });
+  };
+
   const translate = function (
     element?: Maybe<HTMLElement>,
     to?: number,
@@ -278,6 +288,8 @@ export const modal = (zuck: ZuckObject) => {
             `#zuck-modal .story-viewer[data-story-id="${currentStory}"]`
           );
 
+          pauseAllVideos();
+
           zuck.playVideoItem(storyViewer, items);
         }
 
@@ -324,6 +336,11 @@ export const modal = (zuck: ZuckObject) => {
 
     slides.innerHTML = htmlItems;
 
+    slides.querySelectorAll<HTMLVideoElement>('video').forEach(v => {
+      v.autoplay = false;
+      v.removeAttribute('autoplay');
+    });
+
     const video = slides.querySelector('video');
     const addMuted = function (video: HTMLVideoElement) {
       // if (video.muted) {
@@ -335,7 +352,6 @@ export const modal = (zuck: ZuckObject) => {
         storyViewer?.classList.add('muted');
       } else {
         storyViewer?.classList.remove('muted');
-        storyViewer?.querySelector('.unmute-overlay')?.classList.add('hidden'); // y en CSS: .hidden{display:none;pointer-events:none}
       }
     };
 
@@ -378,49 +394,27 @@ export const modal = (zuck: ZuckObject) => {
     const storyViewer = storyViewerWrap.firstElementChild as HTMLElement;
 
     const wireUnmuteOverlay = () => {
-      let overlay = storyViewer.querySelector<HTMLElement>('.tip'); // <- stock zuck.js
+      const onFirstInteract = (e: Event) => {
+        const t = e.target as HTMLElement;
 
-      if (!overlay) {
-        return; // en stock debería existir
-      }
-
-      // asegurar stacking y orden
-      storyViewer.style.position ||= 'relative';
-      (storyViewer.style as any).isolation = 'isolate';
-      if (storyViewer.lastElementChild !== overlay) storyViewer.appendChild(overlay);
-
-      Object.assign(overlay.style, {
-        position: 'absolute',
-        inset: '0',
-        zIndex: '2147483647',
-        pointerEvents: 'auto',
-        background: 'transparent',
-        border: '0',
-        cursor: 'pointer'
-      });
-
-      // limpiar handlers previos si reabres
-      const fresh = overlay.cloneNode(true) as HTMLElement;
-      overlay.replaceWith(fresh);
-      overlay = fresh;
-
-      const doUnmute = (e: Event) => {
-        e.preventDefault?.();
-        e.stopPropagation?.();
-        (e as any).stopImmediatePropagation?.();
+        // No interceptar si es un click real sobre el caption/link o botones de UI
+        if (t.closest('.tip') || t.closest('.close') || t.closest('.back') || t.closest('.slides-pointers')) {
+          return;
+        }
 
         const video = storyViewer.querySelector<HTMLVideoElement>('video');
-        if (video) zuck.unmuteVideoItem(video, storyViewer);
+        if (!video) return;
 
-        overlay.classList.add('hidden');
-        overlay.style.display = 'none';
-        overlay.style.pointerEvents = 'none';
-        storyViewer.classList.remove('muted');
+        // Si está muteado o pausado por política de autoplay, intenta reproducir y desmutear
+        if (video.muted || video.paused) {
+          try { zuck.unmuteVideoItem(video, storyViewer); } catch {}
+        }
       };
 
-      overlay.addEventListener('pointerdown', doUnmute, { capture: true, passive: false });
-      overlay.addEventListener('click',       doUnmute, { capture: true, passive: false });
-      overlay.addEventListener('touchend',    doUnmute, { capture: true, passive: false });
+      // Registramos gestos “amplios” para desbloquear audio sin mover DOM
+      storyViewer.addEventListener('pointerdown', onFirstInteract, { passive: false });
+      storyViewer.addEventListener('click',       onFirstInteract, { passive: false });
+      storyViewer.addEventListener('touchend',    onFirstInteract, { passive: false });
     };
 
 
@@ -432,7 +426,7 @@ export const modal = (zuck: ZuckObject) => {
     // storyViewer.className = `story-viewer muted ${className} ${
     //   !forcePlay ? 'stopped' : ''
     // } ${zuck.option('backButton') ? 'with-back-button' : ''}`;
-    storyViewer.className = `story-viewer ${className} ${
+    storyViewer.className = `story-viewer muted ${className} ${
       !forcePlay ? 'stopped' : ''
     } ${zuck.option('backButton') ? 'with-back-button' : ''}`;
 
@@ -509,6 +503,8 @@ export const modal = (zuck: ZuckObject) => {
 
     const touchStart = function (event: TouchEvent | MouseEvent) {
       const targetEl = event.target as HTMLElement;
+      
+      pauseAllVideos();
 
       if (targetEl && targetEl.closest('.tip')) {
         return;
@@ -666,6 +662,7 @@ export const modal = (zuck: ZuckObject) => {
         }
 
         if (storyViewer) {
+          pauseAllVideos();
           zuck.playVideoItem(
             storyViewer,
             storyViewer.querySelectorAll<HTMLElement>('.active'),
@@ -846,6 +843,10 @@ export const modal = (zuck: ZuckObject) => {
         tryFullScreen();
       }
 
+      const activeVideo = document.querySelector<HTMLVideoElement>(
+        '#zuck-modal .story-viewer.viewing .item.active video'
+      );
+      pauseAllVideos(activeVideo);
       zuck.callback('onView')(storyId);
     };
 
@@ -892,6 +893,8 @@ export const modal = (zuck: ZuckObject) => {
       try { cur.pause(); } catch {}
       zuck.internalData.currentVideoElement = undefined;
     }
+    pauseAllVideos();
+
     const modalContainer =
       document.querySelector<ModalContainer>('#zuck-modal');
     const modalContent = document.querySelector<HTMLElement>(

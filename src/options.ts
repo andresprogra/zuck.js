@@ -120,10 +120,35 @@ export const optionsDefault = (option?: ZuckObject['option']): Options => ({
     viewerItem(storyData: StoryItem, currentStoryItem: StoryItem) {
       return `<div class="story-viewer">
                 <div class="head">
-                  <div class="left">
-                    ${
-                      option('backButton') ? '<a class="back">&lsaquo;</a>' : ''
-                    }
+                <div class="left">
+                ${
+                  option('backButton')
+                    ? `
+                      <button class="back" style="
+                          outline: 0;
+                          border: 0;
+                          height: inherit;
+                          margin-top: 4px;"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            width="20" height="20"
+                            aria-hidden="true"
+                            style="display: block;"
+                            class: "back" >
+                          <path d="M15 18l-6-6 6-6"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round">
+                          </path>
+                        </svg>
+                      </button>
+                    `
+                    : ''
+                    // option('backButton') ? '<a class="back" style="text-decoration: none;font-size: 15px;margin: 0;">&lsaquo;</a>' : ''
+                }
 
                     <span class="item-preview">
                       <img lazy="eager" class="profilePhoto" src="${
