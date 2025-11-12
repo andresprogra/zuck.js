@@ -137,24 +137,28 @@ export const Zuck: ZuckFunction = function (timeline, options) {
         video.pause();
       } catch (e) {}
     }
-  };
+  };  
 
-  const pauseAllVideos = () => {
-    document
-      .querySelectorAll<HTMLVideoElement>('#zuck-modal video')
-      .forEach(v => { try { v.pause(); } catch { } });
-    
-    pauseVideoItem();
-  };
-
-  const ensureOnlyActiveVideoPlaying = (): HTMLVideoElement | null => {
+  const pauseAllVideos = (except?: HTMLVideoElement) => {
     const active = document.querySelector<HTMLVideoElement>(
       '#zuck-modal .story-viewer.viewing .item.active video'
     );
+
     document.querySelectorAll<HTMLVideoElement>('#zuck-modal video').forEach(v => {
-      if (v !== active) { try { v.pause(); } catch {} }
+      if (v === except) return;
+
+      try {
+        v.pause();
+        v.autoplay = false;
+        v.removeAttribute('autoplay');
+        v.muted = true;
+
+        const isActive = v === active;
+        if (!isActive) {
+          v.load();
+        }
+      } catch (_) {}
     });
-    return active || null;
   };
 
   const unmuteVideoItem = function (
@@ -227,7 +231,6 @@ export const Zuck: ZuckFunction = function (timeline, options) {
           }
         }
 
-        // destruct the remaining attributes as options
         items.push(item);
       });
 
@@ -352,11 +355,9 @@ export const Zuck: ZuckFunction = function (timeline, options) {
 
     const localSeen = internalData.seenItems[storyId] === true;
 
-    // Resolvemos el seen final de la story con prioridad: data.seen (si ya venía) OR todos-los-items-seen OR localStorage
     const resolvedSeen = !!(data.seen || seenFromItems || localSeen);
     data.seen = resolvedSeen;
 
-    // Sincroniza memoria y DOM desde el principio
     internalData.seenItems[storyId] = resolvedSeen;
     saveLocalData('seenItems', internalData.seenItems);
     if (resolvedSeen) {

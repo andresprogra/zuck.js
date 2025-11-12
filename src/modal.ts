@@ -72,13 +72,25 @@ export const modal = (zuck: ZuckObject) => {
   }
 
   const pauseAllVideos = (except?: HTMLVideoElement) => {
-    document
-      .querySelectorAll<HTMLVideoElement>('#zuck-modal video')
-      .forEach(v => {
-        if (v !== except) {
-          try { v.pause(); } catch { }
+    const active = document.querySelector<HTMLVideoElement>(
+      '#zuck-modal .story-viewer.viewing .item.active video'
+    );
+
+    document.querySelectorAll<HTMLVideoElement>('#zuck-modal video').forEach(v => {
+      if (v === except) return;
+
+      try {
+        v.pause();
+        v.autoplay = false;
+        v.removeAttribute('autoplay');
+        v.muted = true;
+
+        const isActive = v === active;
+        if (!isActive) {
+          v.load();
         }
-      });
+      } catch (_) {}
+    });
   };
 
   const translate = function (
@@ -342,6 +354,26 @@ export const modal = (zuck: ZuckObject) => {
     });
 
     const video = slides.querySelector('video');
+    const isVideoInActiveItem = (vid: HTMLVideoElement) =>
+      !!vid.closest('.story-viewer.viewing .item.active');
+
+    if (video) {
+      video.addEventListener('play', () => {
+        if (!isVideoInActiveItem(video)) {
+          try { video.pause(); } catch (_) {}
+        }
+      });
+
+      video.addEventListener('volumechange', () => {
+        if (!isVideoInActiveItem(video)) {
+          video.muted = true;
+        }
+      });
+
+      video.autoplay = false;
+      video.removeAttribute('autoplay');
+      video.muted = true;
+    }
     const addMuted = function (video: HTMLVideoElement) {
       // if (video.muted) {
       //   storyViewer?.classList.add('muted');
